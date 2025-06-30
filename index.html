@@ -1,0 +1,1321 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Excel数据管理工具 - 文本模式</title>
+  <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <style>
+    :root {
+      --primary: #3498db;
+      --secondary: #2c3e50;
+      --success: #2ecc71;
+      --warning: #f39c12;
+      --danger: #e74c3c;
+      --light: #f5f7fa;
+      --dark: #34495e;
+      --border: #d1d8e0;
+      --placeholder: #a0aec0;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+    }
+
+    body {
+      background: linear-gradient(135deg, #f0f5ff 0%, #e6f0ff 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: var(--dark);
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+      overflow: hidden;
+    }
+
+    header {
+      background: linear-gradient(135deg, var(--secondary) 0%, #1a2530 100%);
+      color: white;
+      padding: 20px 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      font-size: 32px;
+      color: #4fc3f7;
+      background: rgba(255, 255, 255, 0.1);
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .logo-text h1 {
+      font-weight: 600;
+      font-size: 24px;
+      letter-spacing: 0.5px;
+    }
+
+    .logo-text p {
+      font-size: 12px;
+      opacity: 0.8;
+      margin-top: 3px;
+    }
+
+    .file-info {
+      font-size: 14px;
+      opacity: 0.9;
+      text-align: right;
+    }
+
+    .upload-area {
+      background: white;
+      padding: 30px 20px;
+      text-align: center;
+      border: 2px dashed var(--border);
+      border-radius: 10px;
+      margin: 25px;
+      transition: all 0.4s;
+      position: relative;
+      min-height: 200px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .upload-area.active {
+      background: rgba(79, 195, 247, 0.08);
+      border-color: var(--primary);
+    }
+
+    .upload-area.loading {
+      background: rgba(243, 156, 18, 0.08);
+    }
+
+    .file-input {
+      display: none;
+    }
+
+    .file-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 28px;
+      background: var(--primary);
+      color: white;
+      border-radius: 50px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s;
+      box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .file-label:hover {
+      background: #2980b9;
+      transform: translateY(-3px);
+      box-shadow: 0 8px 20px rgba(52, 152, 219, 0.4);
+    }
+
+    .file-label .progress {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.5);
+      width: 0%;
+      transition: width 0.3s;
+    }
+
+    .upload-hint {
+      margin-top: 18px;
+      font-size: 14px;
+      color: var(--placeholder);
+      max-width: 600px;
+      line-height: 1.6;
+    }
+
+    .upload-status {
+      margin-top: 15px;
+      padding: 10px 15px;
+      border-radius: 8px;
+      background: rgba(46, 204, 113, 0.1);
+      color: #27ae60;
+      font-size: 14px;
+      max-width: 600px;
+    }
+
+    .upload-status.error {
+      background: rgba(231, 76, 60, 0.1);
+      color: #e74c3c;
+    }
+
+    .controls {
+      padding: 20px 30px;
+      background: var(--light);
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .search-box {
+      flex-grow: 1;
+      display: flex;
+      max-width: 550px;
+      position: relative;
+    }
+
+    .search-box input {
+      padding: 14px 20px;
+      border: 1px solid var(--border);
+      border-radius: 50px;
+      flex-grow: 1;
+      font-size: 16px;
+      outline: none;
+      transition: all 0.3s;
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .search-box input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+    }
+
+    .search-box input::placeholder {
+      color: var(--placeholder);
+    }
+
+    .search-box button {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .search-box button:hover {
+      background: #2980b9;
+      transform: translateY(-50%) scale(1.05);
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn {
+      padding: 13px 22px;
+      border-radius: 50px;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.3s;
+    }
+
+    .btn i {
+      font-size: 15px;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #2980b9;
+      box-shadow: 0 6px 15px rgba(52, 152, 219, 0.3);
+    }
+
+    .btn-success {
+      background: var(--success);
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #27ae60;
+      box-shadow: 0 6px 15px rgba(46, 204, 113, 0.3);
+    }
+
+    .btn-warning {
+      background: var(--warning);
+      color: white;
+    }
+
+    .btn-warning:hover {
+      background: #e67e22;
+      box-shadow: 0 6px 15px rgba(243, 156, 18, 0.3);
+    }
+
+    .btn-light {
+      background: white;
+      color: var(--dark);
+      border: 1px solid var(--border);
+    }
+
+    .btn-light:hover {
+      background: #f0f5ff;
+    }
+
+    .data-table-container {
+      overflow-x: auto;
+      padding: 0 20px 20px;
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      border-spacing: 0;
+      min-width: 800px;
+    }
+
+    .data-table th {
+      background: linear-gradient(to bottom, #f7f9fc, #edf1f7);
+      color: var(--dark);
+      padding: 16px 15px;
+      text-align: left;
+      position: sticky;
+      top: 0;
+      font-weight: 600;
+      border-bottom: 2px solid var(--border);
+      text-transform: uppercase;
+      font-size: 14px;
+      letter-spacing: 0.5px;
+    }
+
+    .data-table td {
+      padding: 14px 15px;
+      border: 1px solid #edf1f7;
+      vertical-align: top;
+    }
+
+    .data-table tr:nth-child(even) {
+      background-color: rgba(247, 249, 252, 0.5);
+    }
+
+    .data-table tr:hover {
+      background-color: rgba(52, 152, 219, 0.05);
+    }
+
+    .data-table .number-cell {
+      text-align: right;
+      font-family: 'Courier New', monospace;
+    }
+
+    .data-table .date-cell {
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      white-space: nowrap;
+    }
+
+    .data-table .empty-cell {
+      color: var(--placeholder);
+      font-style: italic;
+    }
+
+    .data-table .merged-cell {
+      background-color: rgba(243, 156, 18, 0.1);
+      text-align: center;
+      font-weight: 500;
+    }
+
+    .action-cell {
+      display: flex;
+      gap: 8px;
+    }
+
+    .action-btn {
+      padding: 8px 14px;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-weight: 500;
+      font-size: 14px;
+      border: 1px solid transparent;
+    }
+
+    .edit-btn {
+      background: rgba(52, 152, 219, 0.1);
+      color: var(--primary);
+    }
+
+    .edit-btn:hover {
+      background: rgba(52, 152, 219, 0.2);
+    }
+
+    .delete-btn {
+      background: rgba(231, 76, 60, 0.1);
+      color: var(--danger);
+    }
+
+    .delete-btn:hover {
+      background: rgba(231, 76, 60, 0.2);
+    }
+
+    .no-data {
+      text-align: center;
+      padding: 60px 20px;
+      color: #7f8c8d;
+    }
+
+    .no-data i {
+      font-size: 72px;
+      margin-bottom: 25px;
+      color: #d1d8e0;
+    }
+
+    .no-data h3 {
+      font-size: 24px;
+      margin-bottom: 15px;
+      font-weight: 500;
+    }
+
+    .no-data p {
+      font-size: 17px;
+      opacity: 0.9;
+    }
+
+    .form-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+
+    .form-content {
+      background: white;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 650px;
+      overflow: hidden;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+    }
+
+    .form-header {
+      background: linear-gradient(135deg, var(--primary) 0%, #1a73e8 100%);
+      color: white;
+      padding: 22px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+      opacity: 0.8;
+      transition: opacity 0.2s;
+      width: 38px;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+    }
+
+    .close-btn:hover {
+      opacity: 1;
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .form-body {
+      padding: 30px;
+      max-height: 65vh;
+      overflow-y: auto;
+    }
+
+    .form-row {
+      margin-bottom: 24px;
+    }
+
+    .form-row label {
+      display: block;
+      margin-bottom: 10px;
+      font-weight: 600;
+      color: var(--dark);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .form-row input {
+      width: 100%;
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 16px;
+      transition: all 0.3s;
+      background: var(--light);
+    }
+
+    .form-row input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+      outline: none;
+      background: white;
+    }
+
+    .form-footer {
+      padding: 22px;
+      background: var(--light);
+      display: flex;
+      justify-content: flex-end;
+      gap: 15px;
+    }
+
+    .pagination {
+      display: flex;
+      justify-content: center;
+      padding: 25px 0;
+      gap: 8px;
+      background: white;
+    }
+
+    .pagination button {
+      padding: 10px 18px;
+      border: 1px solid var(--border);
+      background: white;
+      border-radius: 10px;
+      cursor: pointer;
+      min-width: 42px;
+      transition: all 0.2s;
+      font-weight: 600;
+    }
+
+    .pagination button:hover:not(:disabled) {
+      background: #edf1f7;
+    }
+
+    .pagination button.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .pagination button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    footer {
+      text-align: center;
+      padding: 24px;
+      color: var(--placeholder);
+      font-size: 15px;
+      background: white;
+      border-top: 1px solid var(--border);
+    }
+
+    footer a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    @media (max-width: 768px) {
+      header {
+        padding: 20px;
+      }
+
+      .logo {
+        flex-direction: column;
+        text-align: center;
+        margin-bottom: 15px;
+      }
+
+      .file-info {
+        text-align: center;
+        width: 100%;
+      }
+
+      .controls {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 20px;
+      }
+
+      .search-box {
+        max-width: 100%;
+      }
+
+      .action-buttons {
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      .upload-area {
+        margin: 15px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .action-cell {
+        flex-direction: column;
+      }
+
+      .action-btn {
+        justify-content: center;
+      }
+
+      .form-body {
+        padding: 20px;
+      }
+
+      .form-footer {
+        flex-direction: column;
+      }
+
+      .btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .data-table td, .data-table th {
+        padding: 10px 8px;
+      }
+    }
+
+    .info-card {
+      background: rgba(52, 152, 219, 0.05);
+      border-left: 4px solid var(--primary);
+      padding: 16px 20px;
+      margin: 20px;
+      border-radius: 0 10px 10px 0;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 15px;
+      color: var(--dark);
+    }
+
+    .info-card i {
+      font-size: 22px;
+      color: var(--primary);
+    }
+
+    .status-pill {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+      display: inline-block;
+    }
+
+    .status-pill-text {
+      background: rgba(160, 174, 192, 0.15);
+      color: var(--placeholder);
+    }
+
+    .table-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 25px 15px;
+      flex-wrap: wrap;
+      gap: 15px;
+      font-size: 14px;
+    }
+
+    .table-footer-info {
+      display: flex;
+      gap: 20px;
+      color: var(--placeholder);
+    }
+
+    .page-size-select {
+      padding: 8px 16px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: white;
+    }
+
+    .merge-info {
+      background-color: rgba(243, 156, 18, 0.08);
+      padding: 10px;
+      border-radius: 8px;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+
+    .loading-indicator {
+      margin: 20px 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .loading-spinner {
+      width: 50px;
+      height: 50px;
+      border: 5px solid rgba(52, 152, 219, 0.2);
+      border-top: 5px solid var(--primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 15px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="container">
+    <header>
+      <div class="logo">
+        <div class="logo-icon">
+          <i class="fas fa-file-excel"></i>
+        </div>
+        <div class="logo-text">
+          <h1>Excel数据管理工具</h1>
+          <p>文本模式 - 所有单元格作为文本读取</p>
+        </div>
+      </div>
+      <div class="file-info" v-if="excelData.length">
+        <p><strong>{{ fileName }}</strong> ({{ excelData.length }} 行, {{ tableHeaders.length }} 列)</p>
+        <p>最后修改: {{ lastModifiedDate }}</p>
+      </div>
+    </header>
+
+    <main>
+      <div class="upload-area" :class="{ active: isDragging, loading: isLoading }"
+           @dragover.prevent="handleDragOver"
+           @dragleave="handleDragLeave"
+           @drop.prevent="handleFileDrop">
+
+        <div v-if="isLoading" class="loading-indicator">
+          <div class="loading-spinner"></div>
+          <p>正在处理文件，请稍候...</p>
+          <p class="upload-hint">处理进度: {{ progress }}%</p>
+        </div>
+
+        <template v-else>
+          <h2 v-if="!excelData.length" style="margin-bottom: 20px;">上传Excel数据表</h2>
+
+          <div v-if="excelData.length" class="info-card">
+            <i class="fas fa-check-circle"></i>
+            <div>文件处理成功: {{ excelData.length }} 行数据已加载为文本格式</div>
+          </div>
+          <div v-else class="info-card">
+            <i class="fas fa-info-circle"></i>
+            <div>支持.xlsx和.xls格式文件，所有单元格将作为文本读取</div>
+          </div>
+
+          <input type="file" id="file-input" class="file-input"
+                 accept=".xlsx, .xls, application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                 @change="handleFileUpload" ref="fileInput">
+          <label for="file-input" class="file-label">
+            <span v-if="progress > 0 && progress < 100">上传中...</span>
+            <span v-else>
+                                <i class="fas fa-cloud-upload-alt"></i> 选择Excel文件
+                            </span>
+            <div class="progress" :style="{ width: progress + '%' }"></div>
+          </label>
+          <p class="upload-hint">
+            支持Excel 97-2003工作簿(.xls)和Excel工作簿(.xlsx)格式，
+            所有单元格内容将作为纯文本读取（包括数字、日期等）
+          </p>
+
+          <div class="upload-status" :class="{ error: errorMessage }" v-if="statusMessage || errorMessage">
+            <i :class="errorMessage ? 'fas fa-exclamation-circle' : 'fas fa-info-circle'"></i>
+            {{ errorMessage || statusMessage }}
+          </div>
+        </template>
+      </div>
+
+      <div class="controls" v-if="excelData.length">
+        <div class="search-box">
+          <input type="text" v-model="searchTerm" placeholder="搜索所有文本字段..."
+                 @keyup.enter="searchData">
+          <button @click="searchData">
+            <i class="fas fa-search"></i>
+          </button>
+        </div>
+
+        <div class="action-buttons">
+          <button class="btn btn-success" @click="openAddModal">
+            <i class="fas fa-plus"></i> 添加数据
+          </button>
+          <button class="btn btn-warning" @click="exportExcel">
+            <i class="fas fa-file-export"></i> 导出Excel
+          </button>
+          <button class="btn btn-light" @click="clearData">
+            <i class="fas fa-trash"></i> 清除数据
+          </button>
+        </div>
+      </div>
+
+      <div v-if="excelData.length">
+        <div class="data-table-container">
+          <table class="data-table">
+            <thead>
+            <tr>
+              <th v-for="(header, index) in tableHeaders" :key="index">{{ header }}</th>
+              <th>操作</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr v-for="(row, rowIndex) in paginatedData" :key="rowIndex">
+              <td v-for="(cell, colIndex) in row.cells" :key="colIndex"
+                  :class="getCellClass(cell, colIndex)">
+                {{ formatCellValue(cell) }}
+              </td>
+              <td class="action-cell">
+                <button class="action-btn edit-btn"
+                        @click="openEditModal(rowIndex)">
+                  <i class="fas fa-pencil-alt"></i> 编辑
+                </button>
+                <button class="action-btn delete-btn"
+                        @click="deleteRow(rowIndex)">
+                  <i class="fas fa-trash-alt"></i> 删除
+                </button>
+              </td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="table-footer">
+          <div class="table-footer-info">
+            <div>显示 {{ (currentPage - 1) * pageSize + 1 }} - {{ Math.min(currentPage * pageSize, filteredData.length) }} 条，共 {{ filteredData.length }} 条</div>
+          </div>
+
+          <div>
+            <span>每页显示:</span>
+            <select v-model="pageSize" class="page-size-select">
+              <option value="5">5</option>
+              <option value="10">10</option>
+              <option value="20">20</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="pagination" v-if="totalPages > 1">
+          <button @click="changePage(currentPage - 1)" :disabled="currentPage === 1">
+            <i class="fas fa-chevron-left"></i>
+          </button>
+          <button v-for="page in visiblePages" :key="page"
+                  @click="changePage(page)"
+                  :class="{ active: currentPage === page }">
+            {{ page }}
+          </button>
+          <button @click="changePage(currentPage + 1)" :disabled="currentPage === totalPages">
+            <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="no-data" v-else-if="!isLoading">
+        <i class="fas fa-database"></i>
+        <h3>数据表为空</h3>
+        <p>请上传Excel文件开始使用</p>
+        <p style="margin-top: 15px;">
+          <span class="status-pill status-pill-text">文本模式</span>
+          所有单元格内容将作为纯文本处理
+        </p>
+      </div>
+    </main>
+
+    <footer>
+      <p>Excel数据管理工具 &copy; 2023 | 文本模式版本 |
+        <a href="#" @click.prevent>帮助文档</a>
+      </p>
+    </footer>
+  </div>
+
+  <!-- 添加/编辑模态框 -->
+  <div class="form-modal" v-if="showModal">
+    <div class="form-content">
+      <div class="form-header">
+        <h3>{{ modalMode === 'add' ? '添加新数据行' : '编辑数据行 #' + (currentIndex + 1) }}</h3>
+        <button class="close-btn" @click="closeModal">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div class="form-body">
+        <div class="form-row" v-for="(header, index) in tableHeaders" :key="index">
+          <label>
+            <i class="fas fa-columns" style="font-size: 16px;"></i>
+            {{ header }}
+            <span class="status-pill status-pill-text">文本</span>
+          </label>
+          <input
+                  type="text"
+                  v-model="currentRow.cells[index]"
+                  :placeholder="'输入 ' + header + '...'"
+          >
+        </div>
+      </div>
+
+      <div class="form-footer">
+        <button class="btn btn-light" @click="closeModal">
+          <i class="fas fa-times"></i> 取消
+        </button>
+        <button class="btn btn-primary" @click="saveRow">
+          <i class="fas fa-save"></i> {{ modalMode === 'add' ? '添加数据' : '保存修改' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  new Vue({
+    el: '#app',
+    data: {
+      excelData: [],
+      tableHeaders: [],
+      fileName: '',
+      lastModifiedDate: '',
+      searchTerm: '',
+      currentPage: 1,
+      pageSize: 10,
+      showModal: false,
+      modalMode: 'add',
+      currentRow: { cells: [] },
+      originalIndex: -1,
+      isDragging: false,
+      isLoading: false,
+      progress: 0,
+      statusMessage: '',
+      errorMessage: '',
+      fileTypeError: false
+    },
+    computed: {
+      filteredData() {
+        if (!this.searchTerm) return this.excelData;
+
+        const term = this.searchTerm.toLowerCase().trim();
+        return this.excelData.filter(row => {
+          return row.cells.some(cell =>
+                  cell && cell.toString().toLowerCase().includes(term)
+          );
+        });
+      },
+
+      totalPages() {
+        return Math.ceil(this.filteredData.length / this.pageSize);
+      },
+
+      visiblePages() {
+        const pages = [];
+        let startPage = Math.max(1, this.currentPage - 2);
+        let endPage = Math.min(this.totalPages, startPage + 4);
+
+        if (endPage - startPage < 4) {
+          startPage = Math.max(1, endPage - 4);
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+          pages.push(i);
+        }
+
+        return pages;
+      },
+
+      paginatedData() {
+        const start = (this.currentPage - 1) * this.pageSize;
+        const end = start + this.pageSize;
+        return this.filteredData.slice(start, end);
+      }
+    },
+    watch: {
+      pageSize() {
+        this.currentPage = 1;
+      }
+    },
+    methods: {
+      // Excel文件处理
+      handleFileUpload(e) {
+        const file = e.target.files[0];
+        if (file) {
+          this.processExcelFile(file);
+        }
+        this.$refs.fileInput.value = null;
+      },
+
+      handleFileDrop(e) {
+        this.isDragging = false;
+        const file = e.dataTransfer.files[0];
+        if (file) {
+          this.processExcelFile(file);
+        }
+      },
+
+      handleDragOver(e) {
+        e.preventDefault();
+        this.isDragging = true;
+        this.statusMessage = "松开鼠标以上传文件";
+      },
+
+      handleDragLeave() {
+        this.isDragging = false;
+        this.statusMessage = "";
+      },
+
+      isExcelFile(file) {
+        const fileName = file.name.toLowerCase();
+        const acceptedTypes = [
+          'application/vnd.ms-excel',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'application/vnd.ms-excel.sheet.macroEnabled.12',
+          'application/vnd.ms-excel.template.macroEnabled.12'
+        ];
+
+        const validExtensions = ['.xls', '.xlsx', '.xlsm', '.xltx'];
+
+        // 检查文件类型和扩展名
+        const isTypeMatch = acceptedTypes.includes(file.type);
+        const isExtensionMatch = validExtensions.some(ext => fileName.endsWith(ext));
+
+        return isTypeMatch || isExtensionMatch;
+      },
+
+      processExcelFile(file) {
+        // 重置状态
+        this.statusMessage = "";
+        this.errorMessage = "";
+        this.isLoading = true;
+        this.progress = 0;
+        this.fileTypeError = false;
+
+        if (!file) {
+          this.errorMessage = "没有选择文件";
+          this.isLoading = false;
+          return;
+        }
+
+        // 验证文件类型
+        if (!this.isExcelFile(file)) {
+          this.errorMessage = "不支持的文件格式: " + file.type + "。请上传Excel文件(.xls, .xlsx)";
+          this.fileTypeError = true;
+          this.isLoading = false;
+          return;
+        }
+
+        this.fileName = file.name;
+        this.lastModifiedDate = new Date(file.lastModified).toLocaleString();
+
+        const reader = new FileReader();
+        this.statusMessage = "正在读取文件内容...";
+
+        // 模拟进度
+        const progressInterval = setInterval(() => {
+          if (this.progress < 90) {
+            this.progress += 5;
+          }
+        }, 300);
+
+        reader.onload = (e) => {
+          this.statusMessage = "正在以文本模式解析Excel...";
+          this.progress = 50;
+
+          try {
+            const data = new Uint8Array(e.target.result);
+
+            // 增加延迟以模拟解析过程
+            setTimeout(() => {
+              try {
+                const workbook = XLSX.read(data, {
+                  type: 'array',
+                  cellDates: false,  // 禁用日期解析
+                  cellStyles: true,
+                  sheetStubs: true,
+                  cellText: true     // 强制读取为文本
+                });
+
+                // 检查是否有工作表
+                if (workbook.SheetNames.length === 0) {
+                  throw new Error("Excel文件中没有工作表");
+                }
+
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+
+                // 检查工作表是否为空
+                if (!worksheet || !worksheet['!ref']) {
+                  throw new Error("工作表为空或无法解析");
+                }
+
+                // 获取工作表范围
+                const range = XLSX.utils.decode_range(worksheet['!ref']);
+
+                // 读取表头
+                this.tableHeaders = [];
+                for (let col = range.s.c; col <= range.e.c; col++) {
+                  const cellAddress = XLSX.utils.encode_cell({ r: range.s.r, c: col });
+                  const cell = worksheet[cellAddress];
+                  this.tableHeaders.push(cell ? this.formatCellForText(cell.v) : `列${col+1}`);
+                }
+
+                // 读取数据行（所有单元格转为文本）
+                this.excelData = [];
+                for (let row = range.s.r + 1; row <= range.e.r; row++) {
+                  const rowData = {
+                    originalIndex: this.excelData.length,
+                    cells: []
+                  };
+                  for (let col = range.s.c; col <= range.e.c; col++) {
+                    const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+                    const cell = worksheet[cellAddress];
+                    rowData.cells.push(cell ? this.formatCellForText(cell.v) : '');
+                  }
+                  this.excelData.push(rowData);
+                }
+
+                this.statusMessage = `成功加载 ${this.excelData.length} 行文本数据`;
+                this.progress = 100;
+
+                // 添加延迟显示加载完成状态
+                setTimeout(() => {
+                  this.isLoading = false;
+                }, 1000);
+
+              } catch (error) {
+                this.handleError(error);
+              } finally {
+                clearInterval(progressInterval);
+              }
+            }, 500);
+          } catch (error) {
+            this.handleError(error);
+          }
+        };
+
+        reader.onerror = (error) => {
+          this.handleError(new Error('文件读取失败: ' + error));
+        };
+
+        reader.onprogress = (e) => {
+          if (e.lengthComputable) {
+            this.progress = Math.round((e.loaded / e.total) * 90);
+          }
+        };
+
+        reader.readAsArrayBuffer(file);
+      },
+
+      handleError(error) {
+        console.error('Excel处理错误:', error);
+        this.errorMessage = error.message || "处理Excel文件时出错";
+        this.isLoading = false;
+        this.progress = 0;
+
+        // 特殊文件类型错误的额外提示
+        if (this.fileTypeError) {
+          this.errorMessage += ". 提示: 如果您使用的是旧版Excel文件(.xls)，请确保文件未损坏。新版Excel文件(.xlsx)通常有更好的兼容性。";
+        }
+      },
+
+      // 强制将单元格值格式化为文本
+      formatCellForText(value) {
+        if (value === null || value === undefined) return '';
+        if (typeof value === 'object' && value instanceof Date) {
+          return value.toISOString();  // 日期转为ISO格式字符串
+        }
+        if (typeof value === 'number') {
+          return value.toString();     // 数字转为字符串
+        }
+        return String(value);         // 其他类型统一转为字符串
+      },
+
+      // 表格显示格式化
+      formatCellValue(value) {
+        if (value === null || value === undefined) return '—';
+        return value.toString().trim() || '—';
+      },
+
+      getCellClass(value, colIndex) {
+        const classes = [];
+        const strValue = value ? value.toString().trim() : '';
+
+        // 空值样式
+        if (strValue === '') {
+          classes.push('empty-cell');
+        }
+
+        return classes;
+      },
+
+      // 数据操作
+      searchData() {
+        this.currentPage = 1;
+      },
+
+      changePage(page) {
+        if (page >= 1 && page <= this.totalPages) {
+          this.currentPage = page;
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      },
+
+      openAddModal() {
+        this.modalMode = 'add';
+        this.currentRow = {
+          originalIndex: -1,
+          cells: this.tableHeaders.map(() => '')
+        };
+        this.showModal = true;
+      },
+
+      openEditModal(paginatedIndex) {
+        const row = this.paginatedData[paginatedIndex];
+        this.modalMode = 'edit';
+        // 深度拷贝行数据，避免直接修改原始数据
+        this.currentRow = {
+          originalIndex: row.originalIndex,
+          cells: [...row.cells]
+        };
+        this.showModal = true;
+      },
+
+      closeModal() {
+        this.showModal = false;
+      },
+
+      saveRow() {
+        if (this.modalMode === 'add') {
+          // 添加新行
+          const newRow = {
+            originalIndex: this.excelData.length,
+            cells: [...this.currentRow.cells]
+          };
+          this.excelData.push(newRow);
+          this.statusMessage = `成功添加行 #${this.excelData.length}`;
+        } else {
+          // 编辑现有行
+          const originalIndex = this.currentRow.originalIndex;
+          if (originalIndex >= 0 && originalIndex < this.excelData.length) {
+            this.excelData[originalIndex].cells = [...this.currentRow.cells];
+            this.statusMessage = `行 #${originalIndex + 1} 更新成功`;
+          } else {
+            this.errorMessage = "无法更新行：原始索引无效";
+            return;
+          }
+        }
+        this.showModal = false;
+        // 关闭成功消息提示
+        setTimeout(() => this.statusMessage = '', 3000);
+      },
+
+      deleteRow(paginatedIndex) {
+        const paginatedRow = this.paginatedData[paginatedIndex];
+        if (confirm('确定要删除此行数据吗？此操作无法撤销。')) {
+          // 使用原始索引删除
+          const index = this.excelData.findIndex(
+                  row => row.originalIndex === paginatedRow.originalIndex
+          );
+          if (index !== -1) {
+            this.excelData.splice(index, 1);
+            // 重置原始索引
+            this.excelData.forEach((row, idx) => {
+              row.originalIndex = idx;
+            });
+            this.statusMessage = `行 #${paginatedRow.originalIndex + 1} 删除成功`;
+            // 如果当前页面为空且不是第一页，则回到上一页
+            if (this.paginatedData.length === 0 && this.currentPage > 1) {
+              this.currentPage--;
+            }
+          }
+          // 关闭成功消息提示
+          setTimeout(() => this.statusMessage = '', 3000);
+        }
+      },
+
+      exportExcel() {
+        try {
+          // 准备工作表数据（保持文本格式）
+          const wsData = [
+            this.tableHeaders,
+            ...this.excelData.map(row => row.cells)
+          ];
+
+          // 创建工作表
+          const worksheet = XLSX.utils.aoa_to_sheet(wsData);
+
+          // 创建工作簿
+          const workbook = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(workbook, worksheet, "文本数据");
+
+          // 导出Excel文件
+          const exportName = this.fileName ?
+                  `文本模式_${this.fileName}` : "文本模式数据.xlsx";
+
+          XLSX.writeFile(workbook, exportName);
+
+          this.statusMessage = "导出成功！文件已开始下载";
+
+        } catch (error) {
+          console.error("导出Excel错误:", error);
+          this.errorMessage = "导出失败: " + error.message;
+        }
+      },
+
+      clearData() {
+        if (confirm('确定要清除所有数据吗？所有操作都将丢失。')) {
+          this.excelData = [];
+          this.tableHeaders = [];
+          this.fileName = '';
+          this.searchTerm = '';
+          this.currentPage = 1;
+          this.statusMessage = '';
+          this.errorMessage = '';
+        }
+      }
+    }
+  });
+</script>
+</body>
+</html>
